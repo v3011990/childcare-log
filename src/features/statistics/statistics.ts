@@ -10,7 +10,9 @@ export interface CaregiverCount {
 
 export interface ActivityDistribution {
   activity: CareActivity
-  total: number
+  /** 有勾選這項活動的天數。同一天由多人協助仍然只算一天。 */
+  days: number
+  /** 每位照顧者參與這項活動的天數。多人協助時，各人天數加總會大於 `days`。 */
   byCaregiver: CaregiverCount[]
 }
 
@@ -39,6 +41,7 @@ export function computeMonthlyStatistics(
 ): MonthlyStatistics {
   const primary = new Map<Caregiver, number>()
   const activityTotals = new Map<CareActivity, Map<Caregiver, number>>()
+  const activityDays = new Map<CareActivity, number>()
   const payers = new Map<Caregiver, number>()
   let expenseTotal = 0
 
@@ -47,8 +50,12 @@ export function computeMonthlyStatistics(
       primary.set(record.primaryCaregiver, (primary.get(record.primaryCaregiver) ?? 0) + 1)
     }
     for (const item of record.activities) {
+      activityDays.set(item.activity, (activityDays.get(item.activity) ?? 0) + 1)
       const bucket = activityTotals.get(item.activity) ?? new Map<Caregiver, number>()
-      bucket.set(item.caregiver, (bucket.get(item.caregiver) ?? 0) + 1)
+      // 同一天同一位照顧者只計一次，即使重複出現也不會灌水。
+      for (const caregiver of new Set(item.caregivers)) {
+        bucket.set(caregiver, (bucket.get(caregiver) ?? 0) + 1)
+      }
       activityTotals.set(item.activity, bucket)
     }
     for (const expense of record.expenses) {
@@ -67,15 +74,11 @@ export function computeMonthlyStatistics(
     monthKey,
     recordedDays: records.length,
     primaryCaregiverDays: asCounts(primary),
-    activities: CARE_ACTIVITIES.map((activity) => {
-      const bucket = activityTotals.get(activity) ?? new Map<Caregiver, number>()
-      const byCaregiver = asCounts(bucket)
-      return {
-        activity,
-        total: byCaregiver.reduce((sum, item) => sum + item.count, 0),
-        byCaregiver,
-      }
-    }),
+    activities: CARE_ACTIVITIES.map((activity) => ({
+      activity,
+      days: activityDays.get(activity) ?? 0,
+      byCaregiver: asCounts(activityTotals.get(activity) ?? new Map<Caregiver, number>()),
+    })),
     expenseTotal,
     expenseByPayer: asCounts(payers),
   }

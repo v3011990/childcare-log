@@ -8,7 +8,9 @@ import {
   saveRecordForDate,
 } from '@/db/repository'
 import { createEmptyDraft } from '@/features/records/record.utils'
-import { DEFAULT_CHILD_ID } from '@/lib/constants'
+import { DEFAULT_CHILD_ID, SCHEMA_VERSION } from '@/lib/constants'
+import { STORES_V1 } from '@/db/schema'
+import Dexie from 'dexie'
 
 let database: ChildCareLogDatabase
 let dbSeq = 0
@@ -23,7 +25,7 @@ describe('repository', () => {
   it('建立當日紀錄', async () => {
     const draft = createEmptyDraft(DEFAULT_CHILD_ID, '2026-09-21')
     draft.primaryCaregiver = 'mother'
-    draft.activities = [{ activity: 'dropoff', caregiver: 'mother' }]
+    draft.activities = [{ activity: 'dropoff', caregivers: ['mother'] }]
 
     const saved = await saveRecordForDate(draft, database)
 
@@ -31,7 +33,7 @@ describe('repository', () => {
     expect(saved?.primaryCaregiver).toBe('mother')
     expect(saved?.activities).toHaveLength(1)
     expect(saved?.createdAt).toBeTruthy()
-    expect(saved?.schemaVersion).toBe(1)
+    expect(saved?.schemaVersion).toBe(SCHEMA_VERSION)
   })
 
   it('同一天重複儲存只會有一筆，並保留 createdAt、更新 updatedAt', async () => {
@@ -41,7 +43,7 @@ describe('repository', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 5))
 
-    draft.activities = [{ activity: 'bath', caregiver: 'father' }]
+    draft.activities = [{ activity: 'bath', caregivers: ['father'] }]
     const second = await saveRecordForDate(draft, database)
 
     const all = await listRecords(DEFAULT_CHILD_ID, database)
@@ -94,10 +96,81 @@ describe('repository', () => {
     expect(await listRecords(DEFAULT_CHILD_ID, database)).toHaveLength(0)
   })
 
+  it('同一項活動可以記多位照顧者，順序固定', async () => {
+    const draft = createEmptyDraft(DEFAULT_CHILD_ID, '2026-09-21')
+    draft.primaryCaregiver = 'mother'
+    // 刻意用非畫面順序輸入，確認儲存時會正規化
+    draft.activities = [{ activity: 'bottle', caregivers: ['grandmother', 'mother'] }]
+
+    const saved = await saveRecordForDate(draft, database)
+
+    expect(saved?.activities).toEqual([
+      { activity: 'bottle', caregivers: ['mother', 'grandmother'] },
+    ])
+  })
+
+  it('活動的照顧者全被移除時，該活動不會留下', async () => {
+    const draft = createEmptyDraft(DEFAULT_CHILD_ID, '2026-09-21')
+    draft.primaryCaregiver = 'mother'
+    draft.activities = [{ activity: 'medicine', caregivers: [] }]
+
+    const saved = await saveRecordForDate(draft, database)
+
+    expect(saved?.activities).toEqual([])
+  })
+
   it('ensureDefaultChild 不會覆寫已改過的名字', async () => {
     const first = await ensureDefaultChild(database)
     await database.children.update(first.id, { name: '小花' })
     const second = await ensureDefaultChild(database)
     expect(second.name).toBe('小花')
+  })
+})
+
+describe('schema v1 → v2 遷移', () => {
+  it('舊的單一 caregiver 會轉成陣列，且不遺失任何紀錄', async () => {
+    const name = `ChildCareLogMigration-${Date.now()}`
+
+    // 先用 v1 的 schema 寫入一筆舊格式紀錄
+    const old = new Dexie(name)
+    old.version(1).stores(STORES_V1)
+    await old.open()
+    await old.table('records').put({
+      id: 'legacy-1',
+      childId: DEFAULT_CHILD_ID,
+      date: '2026-09-01',
+      primaryCaregiver: 'mother',
+      activities: [
+        { activity: 'pickup', caregiver: 'grandmother' },
+        { activity: 'bath', caregiver: 'father' },
+      ],
+      childStatus: ['normal'],
+      caregiverNotes: { father: '晚上洗澡' },
+      importantEvents: [],
+      expenses: [],
+      createdAt: '2026-09-01T10:00:00.000Z',
+      updatedAt: '2026-09-01T10:00:00.000Z',
+      schemaVersion: 1,
+    })
+    old.close()
+
+    // 再用目前版本開啟，Dexie 會執行 v2 的 upgrade
+    const upgraded = new ChildCareLogDatabase(name)
+    await upgraded.open()
+
+    const record = await upgraded.records.get('legacy-1')
+    expect(record?.activities).toEqual([
+      { activity: 'pickup', caregivers: ['grandmother'] },
+      { activity: 'bath', caregivers: ['father'] },
+    ])
+    expect(record?.schemaVersion).toBe(SCHEMA_VERSION)
+    // 其他欄位原樣保留，createdAt 沒有被改寫
+    expect(record?.createdAt).toBe('2026-09-01T10:00:00.000Z')
+    expect(record?.caregiverNotes).toEqual({ father: '晚上洗澡' })
+
+    // 經過 repository 讀出來也是新格式
+    const viaRepository = await getRecordByDate(DEFAULT_CHILD_ID, '2026-09-01', upgraded)
+    expect(viaRepository?.activities[0]?.caregivers).toEqual(['grandmother'])
+    upgraded.close()
   })
 })

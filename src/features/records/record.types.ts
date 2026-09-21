@@ -8,10 +8,15 @@ import type {
   ImportantEventTag,
 } from '@/types/common'
 
-/** 一項照顧活動，以及實際執行的照顧者。 */
+/**
+ * 一項照顧活動，以及實際參與的照顧者。
+ *
+ * `caregivers` 至少一位。同一項活動可能由多人一起完成（例如媽媽泡奶、爸爸餵），
+ * 所以這裡是陣列而不是單一照顧者（schema v2）。
+ */
 export interface CareActivityRecord {
   activity: CareActivity
-  caregiver: Caregiver
+  caregivers: Caregiver[]
 }
 
 export interface Expense {
@@ -31,6 +36,7 @@ export interface Expense {
  * - `expense` → `expenses`，同一天可能有掛號費、藥費等多筆支出。
  * - 新增 `importantEvents`，對應 SPEC §10 的快速標籤。
  * - 新增 `schemaVersion`，讓匯入備份時可以判斷版本相容性。
+ * - `activities[].caregiver` → `caregivers`（v2），同一項活動可以有多人協助。
  */
 export interface CareRecord {
   id: string

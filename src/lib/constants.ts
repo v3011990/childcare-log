@@ -9,8 +9,13 @@ import type {
 export const APP_NAME = '3 分鐘育兒紀錄'
 export const APP_SHORT_NAME = '育兒紀錄'
 
-/** 資料結構版本，匯出／匯入備份時用來判斷相容性。 */
-export const SCHEMA_VERSION = 1
+/**
+ * 資料結構版本，匯出／匯入備份時用來判斷相容性。
+ *
+ * v1：活動只記一位照顧者（`caregiver`）。
+ * v2：活動改記多位照顧者（`caregivers`），並新增泡奶、副食品、換尿布、餵藥、外出活動。
+ */
+export const SCHEMA_VERSION = 2
 
 /** 第一版為單一孩子，使用固定 id，不需要使用者建立。 */
 export const DEFAULT_CHILD_ID = 'default-child'
@@ -44,12 +49,18 @@ export const CAREGIVER_LABELS: Record<Caregiver, string> = {
   other: '其他',
 }
 
+/** 活動顯示順序，大致依一天的作息排列。順序不代表重要性。 */
 export const CARE_ACTIVITIES: readonly CareActivity[] = [
   'morning',
   'dropoff',
   'pickup',
   'meal',
+  'bottle',
+  'solids',
+  'diaper',
+  'medicine',
   'play',
+  'outing',
   'bath',
   'bedtime',
   'night',
@@ -60,7 +71,12 @@ export const CARE_ACTIVITY_LABELS: Record<CareActivity, string> = {
   dropoff: '送托／送學',
   pickup: '接托／接學',
   meal: '吃飯／餵食',
+  bottle: '泡奶／餵奶',
+  solids: '副食品',
+  diaper: '換尿布',
+  medicine: '餵藥',
   play: '陪玩',
+  outing: '外出活動',
   bath: '洗澡／清潔',
   bedtime: '哄睡',
   night: '夜間照顧',
@@ -72,7 +88,12 @@ export const CARE_ACTIVITY_SHORT_LABELS: Record<CareActivity, string> = {
   dropoff: '送托',
   pickup: '接托',
   meal: '吃飯',
+  bottle: '泡奶',
+  solids: '副食品',
+  diaper: '換尿布',
+  medicine: '餵藥',
   play: '陪玩',
+  outing: '外出',
   bath: '洗澡',
   bedtime: '哄睡',
   night: '夜間照顧',

@@ -55,13 +55,15 @@ export function normalizeDraft(draft: CareRecordDraft): CareRecordDraft {
     if (hasText(note)) caregiverNotes[caregiver] = note
   }
 
-  // 活動固定依畫面順序儲存，讓匯出與比對結果穩定，不受勾選先後影響。
+  // 活動與其照顧者都固定依畫面順序儲存，讓匯出與比對結果穩定，不受點選先後影響。
+  // 沒有任何照顧者的活動視為未勾選，不會留下沒有執行者的紀錄。
   const seenActivities = new Set<CareActivity>()
   const activities = CARE_ACTIVITIES.flatMap((activity) => {
     const found = draft.activities.find((item) => item.activity === activity)
     if (!found || seenActivities.has(activity)) return []
     seenActivities.add(activity)
-    return [found]
+    const caregivers = CAREGIVERS.filter((caregiver) => found.caregivers.includes(caregiver))
+    return caregivers.length > 0 ? [{ activity, caregivers }] : []
   })
 
   return {
@@ -107,7 +109,7 @@ export function recordSummaryLines(record: CareRecord): SummaryLine[] {
   for (const item of record.activities) {
     lines.push({
       label: CARE_ACTIVITY_SHORT_LABELS[item.activity],
-      value: CAREGIVER_LABELS[item.caregiver],
+      value: item.caregivers.map((caregiver) => CAREGIVER_LABELS[caregiver]).join('、'),
     })
   }
   if (record.childStatus.length > 0) {
@@ -150,7 +152,7 @@ export function totalExpense(record: Pick<CareRecord, 'expenses'>): number {
 export function involvedCaregivers(draft: CareRecordDraft): Caregiver[] {
   const seen = new Set<Caregiver>()
   if (draft.primaryCaregiver) seen.add(draft.primaryCaregiver)
-  for (const item of draft.activities) seen.add(item.caregiver)
+  for (const item of draft.activities) for (const caregiver of item.caregivers) seen.add(caregiver)
   for (const key of Object.keys(draft.caregiverNotes) as Caregiver[]) seen.add(key)
   for (const expense of draft.expenses) seen.add(expense.payer)
   return CAREGIVERS.filter((caregiver) => seen.has(caregiver))

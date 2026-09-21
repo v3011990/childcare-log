@@ -8,6 +8,6 @@
   "assets": {
     "directory": "./dist/",
     // 直接輸入網址路徑時回傳 index.html，交給前端路由處理。
-    "not_found_handling": "single-page-application"
-  }
+    "not_found_handling": "single-page-application",
+  },
 }

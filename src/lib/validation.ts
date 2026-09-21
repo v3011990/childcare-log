@@ -29,8 +29,19 @@ export const isoDateSchema = z.string().refine(isValidISODate, {
 
 export const careActivityRecordSchema = z.object({
   activity: careActivitySchema,
-  caregiver: caregiverSchema,
+  caregivers: z.array(caregiverSchema).min(1),
 })
+
+/**
+ * 相容讀取活動：v1 只有單一 `caregiver`，v2 起是 `caregivers` 陣列。
+ * 舊資料一律轉成陣列，不丟失任何已記錄的照顧者。
+ */
+export const anyCareActivityRecordSchema = z.union([
+  careActivityRecordSchema,
+  z
+    .object({ activity: careActivitySchema, caregiver: caregiverSchema })
+    .transform((raw) => ({ activity: raw.activity, caregivers: [raw.caregiver] })),
+])
 
 export const expenseSchema = z.object({
   id: z.string().min(1),
@@ -71,8 +82,11 @@ export const settingEntrySchema = z.object({
 })
 
 /**
- * 相容讀取：接受 SPEC §6 原始形狀（單筆 expense、father/motherCareNote），
- * 轉換成目前的 domain model。只做欄位搬移，不補寫任何不存在的資料（SPEC §16）。
+ * 相容讀取：接受 SPEC §6 原始形狀（單筆 expense、father/motherCareNote）
+ * 與 schema v1 的活動形狀（單一 caregiver），轉換成目前的 domain model。
+ * 只做欄位搬移，不補寫任何不存在的資料（SPEC §16）。
+ *
+ * 同時用於讀取 IndexedDB 既有資料與匯入備份，確保舊紀錄不會因為格式改變而消失。
  */
 export const legacyCareRecordSchema = z
   .object({
@@ -80,7 +94,7 @@ export const legacyCareRecordSchema = z
     childId: z.string().min(1),
     date: isoDateSchema,
     primaryCaregiver: caregiverSchema.optional(),
-    activities: z.array(careActivityRecordSchema).optional(),
+    activities: z.array(anyCareActivityRecordSchema).optional(),
     childStatus: z.array(childStatusSchema).optional(),
     childStatusNote: z.string().optional(),
     fatherCareNote: z.string().optional(),
@@ -118,7 +132,8 @@ export const legacyCareRecordSchema = z
       expenses,
       createdAt: raw.createdAt,
       updatedAt: raw.updatedAt,
-      schemaVersion: raw.schemaVersion ?? SCHEMA_VERSION,
+      // 轉換後的形狀就是目前版本，所以一律標記成目前的 schemaVersion。
+      schemaVersion: SCHEMA_VERSION,
     }
   })
 

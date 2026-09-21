@@ -35,8 +35,8 @@ describe('Today Page', () => {
     const stored = await getRecordByDate(DEFAULT_CHILD_ID, todayISO())
     expect(stored?.primaryCaregiver).toBe('mother')
     expect(stored?.activities).toEqual([
-      { activity: 'dropoff', caregiver: 'mother' },
-      { activity: 'bedtime', caregiver: 'mother' },
+      { activity: 'dropoff', caregivers: ['mother'] },
+      { activity: 'bedtime', caregivers: ['mother'] },
     ])
     expect(stored?.importantEvents).toEqual(['doctor'])
     expect(stored?.importantNote).toBe('下午去診所回診')
@@ -72,7 +72,9 @@ describe('Today Page', () => {
 
     await waitFor(async () => {
       const stored = await getRecordByDate(DEFAULT_CHILD_ID, todayISO())
-      expect(stored?.activities).toEqual([{ activity: 'pickup', caregiver: 'grandmother' }])
+      expect(stored?.activities).toEqual([
+        { activity: 'pickup', caregivers: ['mother', 'grandmother'] },
+      ])
     })
   })
 

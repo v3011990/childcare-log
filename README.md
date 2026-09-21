@@ -28,7 +28,7 @@ React 19、TypeScript、Vite、Tailwind CSS v4、React Router（hash router）�
 CareRecord
   date             YYYY-MM-DD（裝置當地日期，不做 UTC 轉換）
   primaryCaregiver 今天的主要照顧者
-  activities       [{ activity, caregiver }]，勾選時預設帶入主要照顧者
+  activities       [{ activity, caregivers[] }]，勾選時預設帶入主要照顧者，可再加人
   childStatus      孩子狀況（可複選，「正常」與其他互斥）
   caregiverNotes   以照顧者為 key 的自由文字
   importantEvents  重要事件標籤，選了才展開文字欄位
@@ -36,7 +36,16 @@ CareRecord
   createdAt / updatedAt / schemaVersion
 ```
 
-與最初 SPEC §6 的差異：`fatherCareNote` / `motherCareNote` 改為 `caregiverNotes`（讓外婆、爺爺奶奶也能被記錄），`expense` 改為 `expenses`，並新增 `importantEvents` 與 `schemaVersion`。匯入備份時仍可讀入舊形狀的資料（見 `src/lib/validation.ts` 的 `legacyCareRecordSchema`），CSV 匯出仍保留「爸爸照顧紀錄／媽媽照顧紀錄」欄位。
+與最初 SPEC §6 的差異：`fatherCareNote` / `motherCareNote` 改為 `caregiverNotes`（讓外婆、爺爺奶奶也能被記錄），`expense` 改為 `expenses`，`activities[].caregiver` 改為 `caregivers` 陣列（同一項活動可能多人協助），並新增 `importantEvents` 與 `schemaVersion`。匯入備份與讀取舊資料時都能吃下舊形狀（見 `src/lib/validation.ts` 的 `legacyCareRecordSchema`），CSV 匯出仍保留「爸爸照顧紀錄／媽媽照顧紀錄」欄位。
+
+活動項目共 13 項：早晨準備、送托／送學、接托／接學、吃飯／餵食、泡奶／餵奶、副食品、換尿布、餵藥、陪玩、外出活動、洗澡／清潔、哄睡、夜間照顧。要增減項目改 `src/types/common.ts` 的 `CareActivity` 與 `src/lib/constants.ts` 的三張對照表即可，新增是向後相容的（列舉值只能追加，不能改名或刪除）。
+
+## Schema 版本
+
+- **v1**：活動只記一位照顧者（`caregiver`）。
+- **v2**：活動改記多位照顧者（`caregivers`），新增泡奶、副食品、換尿布、餵藥、外出活動。
+
+升級由 `src/db/migrations.ts` 的 Dexie v2 `upgrade()` 自動完成，只把既有值搬進陣列，不新增也不刪除任何照顧者，`createdAt` 不變。即使升級因故沒跑到，repository 讀取時也會用相容 schema 把舊格式轉過來，舊紀錄不會消失。
 
 ## 資料可靠度
 

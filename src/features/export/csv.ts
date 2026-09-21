@@ -66,9 +66,10 @@ function payerSummary(record: CareRecord): string {
 }
 
 export function recordToCsvRow(record: CareRecord): string[] {
+  // 同一項活動可能多人協助，欄位內以頓號並列，沒做的留空。
   const activityCells = CARE_ACTIVITIES.map((activity) => {
     const found = record.activities.find((item) => item.activity === activity)
-    return found ? CAREGIVER_LABELS[found.caregiver] : ''
+    return found ? found.caregivers.map((caregiver) => CAREGIVER_LABELS[caregiver]).join('、') : ''
   })
 
   return [

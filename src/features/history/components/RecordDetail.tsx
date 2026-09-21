@@ -54,7 +54,9 @@ export function RecordDetail({ record }: { record: CareRecord }) {
             {record.activities.map((item) => (
               <li key={item.activity} className="flex justify-between gap-3">
                 <span className="text-ink">{CARE_ACTIVITY_LABELS[item.activity]}</span>
-                <span className="text-muted">{CAREGIVER_LABELS[item.caregiver]}</span>
+                <span className="text-right text-muted">
+                  {item.caregivers.map((caregiver) => CAREGIVER_LABELS[caregiver]).join('、')}
+                </span>
               </li>
             ))}
           </ul>

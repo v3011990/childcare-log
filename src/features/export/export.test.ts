@@ -10,8 +10,8 @@ function sampleRecord(): CareRecord {
     ...createEmptyDraft(DEFAULT_CHILD_ID, '2026-09-21'),
     primaryCaregiver: 'mother',
     activities: [
-      { activity: 'dropoff', caregiver: 'mother' },
-      { activity: 'pickup', caregiver: 'grandmother' },
+      { activity: 'dropoff', caregivers: ['mother'] },
+      { activity: 'pickup', caregivers: ['grandmother', 'father'] },
     ],
     childStatus: ['sick'],
     childStatusNote: '下午開始咳嗽',
@@ -45,6 +45,11 @@ describe('CSV export', () => {
       '洗澡',
       '哄睡',
       '夜間照顧',
+      '泡奶',
+      '副食品',
+      '換尿布',
+      '餵藥',
+      '外出',
       '孩子狀況',
       '爸爸照顧紀錄',
       '媽媽照顧紀錄',
@@ -58,7 +63,8 @@ describe('CSV export', () => {
 
   it('每個活動欄位填入實際執行者，沒做的留空', () => {
     expect(cell('送托')).toBe('媽媽')
-    expect(cell('接托')).toBe('外婆')
+    // 多人協助時並列，順序依固定的照顧者順序而非輸入順序
+    expect(cell('接托')).toBe('爸爸、外婆')
     expect(cell('陪玩')).toBe('')
   })
 
@@ -132,6 +138,38 @@ describe('JSON export / import', () => {
   it('格式不符的備份會被擋下', () => {
     const result = parseBackup(JSON.stringify({ app: 'something-else', records: [] }))
     expect(result.ok).toBe(false)
+  })
+
+  it('可以讀入 schema v1 的活動形狀（單一 caregiver）', () => {
+    const v1 = {
+      app: 'childcare-log',
+      schemaVersion: 1,
+      exportedAt: '2026-09-01T00:00:00.000Z',
+      children: [],
+      records: [
+        {
+          id: 'r1',
+          childId: DEFAULT_CHILD_ID,
+          date: '2026-09-01',
+          activities: [{ activity: 'pickup', caregiver: 'grandmother' }],
+          childStatus: [],
+          caregiverNotes: {},
+          importantEvents: [],
+          expenses: [],
+          createdAt: '2026-09-01T00:00:00.000Z',
+          updatedAt: '2026-09-01T00:00:00.000Z',
+        },
+      ],
+    }
+
+    const result = parseBackup(JSON.stringify(v1))
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.records[0]?.activities).toEqual([
+        { activity: 'pickup', caregivers: ['grandmother'] },
+      ])
+      expect(result.data.records[0]?.schemaVersion).toBe(SCHEMA_VERSION)
+    }
   })
 
   it('可以讀入 SPEC 原始形狀的舊資料（單筆 expense、father/motherCareNote）', () => {

@@ -19,8 +19,26 @@ export type Caregiver =
   | 'paternal_grandfather'
   | 'other'
 
+/**
+ * 照顧活動。
+ *
+ * 新增項目時只能往後追加新的字面值，不可改名或刪除既有值，
+ * 否則使用者裝置上的歷史紀錄會對不上（SPEC §16）。
+ */
 export type CareActivity =
-  'morning' | 'dropoff' | 'pickup' | 'meal' | 'play' | 'bath' | 'bedtime' | 'night'
+  | 'morning'
+  | 'dropoff'
+  | 'pickup'
+  | 'meal'
+  | 'bottle'
+  | 'solids'
+  | 'diaper'
+  | 'medicine'
+  | 'play'
+  | 'outing'
+  | 'bath'
+  | 'bedtime'
+  | 'night'
 
 export type ChildStatus = 'normal' | 'sick' | 'emotional' | 'other'
 

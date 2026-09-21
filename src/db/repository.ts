@@ -1,6 +1,6 @@
 import { db, type ChildCareLogDatabase } from '@/db/database'
 import { monthRange } from '@/lib/dates'
-import { careRecordSchema } from '@/lib/validation'
+import { careRecordSchema, legacyCareRecordSchema } from '@/lib/validation'
 import { buildRecord, isDraftEmpty, normalizeDraft } from '@/features/records/record.utils'
 import type { Child, ISODateString, SettingEntry } from '@/types/common'
 import type { CareRecord, CareRecordDraft } from '@/features/records/record.types'
@@ -12,10 +12,15 @@ import type { CareRecord, CareRecordDraft } from '@/features/records/record.type
 
 export type Database = ChildCareLogDatabase
 
-/** 讀出來的資料一律先驗證，格式不符的舊資料不會悄悄污染 domain model。 */
+/**
+ * 讀出來的資料一律先驗證，格式不符的資料不會悄悄污染 domain model。
+ *
+ * 這裡用相容版 schema：即使 Dexie 的版本升級因故沒跑到，
+ * 舊格式（單一 caregiver）的紀錄仍然讀得出來，不會憑空消失。
+ */
 function parseStored(record: CareRecord | undefined): CareRecord | undefined {
   if (!record) return undefined
-  const result = careRecordSchema.safeParse(record)
+  const result = legacyCareRecordSchema.safeParse(record)
   return result.success ? result.data : undefined
 }
 

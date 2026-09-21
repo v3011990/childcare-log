@@ -14,18 +14,18 @@ describe('computeMonthlyStatistics', () => {
     record('2026-09-01', {
       primaryCaregiver: 'mother',
       activities: [
-        { activity: 'dropoff', caregiver: 'mother' },
-        { activity: 'pickup', caregiver: 'grandmother' },
+        { activity: 'dropoff', caregivers: ['mother'] },
+        { activity: 'pickup', caregivers: ['grandmother', 'father'] },
       ],
     }),
     record('2026-09-02', {
       primaryCaregiver: 'mother',
-      activities: [{ activity: 'bath', caregiver: 'father' }],
+      activities: [{ activity: 'bath', caregivers: ['father'] }],
       expenses: [{ id: 'e1', amount: 300, category: 'medical', payer: 'father' }],
     }),
     record('2026-09-03', {
       primaryCaregiver: 'father',
-      activities: [{ activity: 'dropoff', caregiver: 'father' }],
+      activities: [{ activity: 'dropoff', caregivers: ['father'] }],
       expenses: [{ id: 'e2', amount: 150, category: 'daily', payer: 'mother' }],
     }),
   ]
@@ -45,14 +45,14 @@ describe('computeMonthlyStatistics', () => {
 
   it('各活動分別統計執行者', () => {
     const dropoff = stats.activities.find((item) => item.activity === 'dropoff')
-    expect(dropoff?.total).toBe(2)
+    expect(dropoff?.days).toBe(2)
     expect(dropoff?.byCaregiver).toEqual([
       { caregiver: 'mother', count: 1 },
       { caregiver: 'father', count: 1 },
     ])
 
     const night = stats.activities.find((item) => item.activity === 'night')
-    expect(night?.total).toBe(0)
+    expect(night?.days).toBe(0)
     expect(night?.byCaregiver).toEqual([])
   })
 
@@ -64,10 +64,19 @@ describe('computeMonthlyStatistics', () => {
     ])
   })
 
+  it('多人協助同一項活動時，天數只算一天，但每個人各記一天', () => {
+    const pickup = stats.activities.find((item) => item.activity === 'pickup')
+    expect(pickup?.days).toBe(1)
+    expect(pickup?.byCaregiver).toEqual([
+      { caregiver: 'father', count: 1 },
+      { caregiver: 'grandmother', count: 1 },
+    ])
+  })
+
   it('沒有紀錄的月份回傳全零，不推測任何照顧行為', () => {
     const empty = computeMonthlyStatistics('2026-10', [])
     expect(empty.recordedDays).toBe(0)
     expect(empty.primaryCaregiverDays).toEqual([])
-    expect(empty.activities.every((item) => item.total === 0)).toBe(true)
+    expect(empty.activities.every((item) => item.days === 0)).toBe(true)
   })
 })
