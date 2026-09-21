@@ -1,0 +1,13 @@
+{
+  // Cloudflare Workers（含 Pages 的靜態資源託管）部署設定。
+  // 這個 App 是純靜態站台，沒有任何伺服器端程式碼，
+  // Cloudflare 只負責把 dist/ 裡的檔案送出去，不會接觸到任何育兒紀錄。
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "childcare-log",
+  "compatibility_date": "2026-09-21",
+  "assets": {
+    "directory": "./dist/",
+    // 直接輸入網址路徑時回傳 index.html，交給前端路由處理。
+    "not_found_handling": "single-page-application"
+  }
+}

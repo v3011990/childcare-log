@@ -1,0 +1,47 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-primary: #6f8f87;
+  --color-primary-soft: #e6ece9;
+  --color-primary-dark: #5b776f;
+  --color-surface: #f7f8f6;
+  --color-card: #ffffff;
+  --color-ink: #25312e;
+  --color-muted: #6b7773;
+  --color-line: #e3e7e3;
+  --color-danger: #c96b63;
+  --color-danger-soft: #f7ebea;
+
+  --font-sans:
+    'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC',
+    'Microsoft JhengHei', sans-serif;
+}
+
+html {
+  /* 避免 iOS Safari 對輸入框自動放大字級 */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  /* 單手操作時避免選取文字造成誤觸 */
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+/* 尊重使用者的減少動態偏好，並符合「避免不必要動畫」原則 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -51,4 +51,3 @@ CareRecord
 設定頁可以匯出 JSON（完整資料，含 metadata）與 CSV（UTF-8 BOM，Excel / Google Sheets 可直接開）。匯入會取代這台裝置上的現有資料，動作前會先確認。
 
 清除瀏覽器網站資料會一併清掉紀錄，請定期匯出備份。
-# childcare-log
