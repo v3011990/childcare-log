@@ -145,27 +145,51 @@ export async function dumpAll(database: Database = db): Promise<{
   }
 }
 
-/** 匯入備份：以整包取代現有資料，在同一個 transaction 內完成。 */
-export async function replaceAll(
-  payload: { children: Child[]; records: CareRecord[]; settings?: SettingEntry[] },
+export interface ImportOutcome {
+  created: number
+  updated: number
+}
+
+/**
+ * 匯入 CSV：以 (childId, date) 為鍵合併寫入。
+ *
+ * 檔案裡有的日期會覆寫現有紀錄，檔案裡沒有的日期原封不動保留。
+ * 刻意不做「清空後整包取代」，因為那會讓匯入一份局部的 CSV
+ * 意外刪掉其他日子的紀錄。要完整還原請先「清除所有資料」再匯入。
+ *
+ * 覆寫既有紀錄時沿用原本的 `id`，並保留較早的 `createdAt`（SPEC §16.2）。
+ */
+export async function importRecords(
+  records: CareRecord[],
   database: Database = db,
-): Promise<void> {
-  await database.transaction(
-    'rw',
-    database.records,
-    database.children,
-    database.settings,
-    async () => {
-      await Promise.all([
-        database.records.clear(),
-        database.children.clear(),
-        database.settings.clear(),
-      ])
-      await database.children.bulkPut(payload.children)
-      await database.records.bulkPut(payload.records)
-      if (payload.settings?.length) await database.settings.bulkPut(payload.settings)
-    },
-  )
+): Promise<ImportOutcome> {
+  return database.transaction('rw', database.records, async () => {
+    let created = 0
+    let updated = 0
+
+    for (const record of records) {
+      const existing = await database.records
+        .where('[childId+date]')
+        .equals([record.childId, record.date])
+        .first()
+
+      const merged: CareRecord = existing
+        ? {
+            ...record,
+            id: existing.id,
+            createdAt:
+              existing.createdAt < record.createdAt ? existing.createdAt : record.createdAt,
+          }
+        : record
+
+      careRecordSchema.parse(merged)
+      await database.records.put(merged)
+      if (existing) updated += 1
+      else created += 1
+    }
+
+    return { created, updated }
+  })
 }
 
 export async function clearAllData(database: Database = db): Promise<void> {

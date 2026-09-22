@@ -17,6 +17,8 @@ interface QuickRecordFormProps {
   onChange: (updater: (draft: CareRecordDraft) => CareRecordDraft) => void
   onSave: () => void
   saveLabel?: string
+  /** 補記過去的日子時，畫面文案要說「這天」而不是「今天」，避免誤導。 */
+  dayWord?: '今天' | '這天'
 }
 
 const STATUS_TEXT: Record<SaveStatus, string> = {
@@ -33,13 +35,17 @@ export function QuickRecordForm({
   onChange,
   onSave,
   saveLabel = '儲存紀錄',
+  dayWord = '今天',
 }: QuickRecordFormProps) {
   const [showMore, setShowMore] = useState(draft.expenses.length > 0)
   const involved = involvedCaregivers(draft)
 
   return (
     <div className="flex flex-col gap-3 px-4 py-3">
-      <Card title="今天主要照顧者" hint="今天大部分時間主要由誰照顧？之後每個活動都可以單獨調整。">
+      <Card
+        title={`${dayWord}主要照顧者`}
+        hint={`${dayWord}大部分時間主要由誰照顧？之後每個活動都可以單獨調整。`}
+      >
         <CaregiverSelector
           value={draft.primaryCaregiver}
           onChange={(value) => onChange((current) => ({ ...current, primaryCaregiver: value }))}
@@ -47,15 +53,16 @@ export function QuickRecordForm({
         />
       </Card>
 
-      <Card title="今天做了什麼？" hint="有做到的勾起來就好，不需要記時間。">
+      <Card title={`${dayWord}做了什麼？`} hint="有做到的勾起來就好，不需要記時間。">
         <CareChecklist
           activities={draft.activities}
           primaryCaregiver={draft.primaryCaregiver}
+          dayWord={dayWord}
           onChange={(activities) => onChange((current) => ({ ...current, activities }))}
         />
       </Card>
 
-      <Card title="孩子今天狀況">
+      <Card title={`孩子${dayWord}狀況`}>
         <ChildStatusSelector
           value={draft.childStatus}
           note={draft.childStatusNote}
@@ -70,11 +77,12 @@ export function QuickRecordForm({
         <CaregiverNotesForm
           draft={draft}
           involved={involved}
+          dayWord={dayWord}
           onChange={(caregiverNotes) => onChange((current) => ({ ...current, caregiverNotes }))}
         />
       </Card>
 
-      <Card title="今天重要的事情" hint="平常可以完全不用填。">
+      <Card title={`${dayWord}重要的事情`} hint="平常可以完全不用填。">
         <ImportantEventForm
           events={draft.importantEvents}
           note={draft.importantNote}

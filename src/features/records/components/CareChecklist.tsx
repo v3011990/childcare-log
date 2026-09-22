@@ -18,6 +18,7 @@ const CAREGIVER_OPTIONS: ChipOption<Caregiver>[] = CAREGIVERS.map((caregiver) =>
 interface CareChecklistProps {
   activities: CareActivityRecord[]
   primaryCaregiver?: Caregiver
+  dayWord?: '今天' | '這天'
   onChange: (activities: CareActivityRecord[]) => void
 }
 
@@ -32,7 +33,12 @@ function caregiverSummary(caregivers: Caregiver[]): string {
  * 勾選活動時預設帶入「今天主要照顧者」，需要時再點右側標籤增減參與的人。
  * 預設值一律顯示在畫面上，不會偷偷替使用者填入看不見的資料（SPEC §16.7）。
  */
-export function CareChecklist({ activities, primaryCaregiver, onChange }: CareChecklistProps) {
+export function CareChecklist({
+  activities,
+  primaryCaregiver,
+  dayWord = '今天',
+  onChange,
+}: CareChecklistProps) {
   const [expanded, setExpanded] = useState<CareActivity | null>(null)
 
   const byActivity = new Map(activities.map((item) => [item.activity, item]))
@@ -72,7 +78,7 @@ export function CareChecklist({ activities, primaryCaregiver, onChange }: CareCh
     <div>
       {locked && (
         <p className="mb-2 rounded-xl bg-primary-soft px-3 py-2 text-[13px] leading-5 text-muted">
-          先選今天的主要照顧者，勾選的活動會預設記在他／她身上，之後可以單獨修改。
+          先選{dayWord}的主要照顧者，勾選的活動會預設記在他／她身上，之後可以單獨修改。
         </p>
       )}
       <ul className="divide-y divide-line">

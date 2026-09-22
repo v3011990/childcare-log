@@ -3,11 +3,12 @@ import { ChildCareLogDatabase, ensureDefaultChild } from '@/db/database'
 import {
   deleteRecord,
   getRecordByDate,
+  importRecords,
   listRecords,
   listRecordsByMonth,
   saveRecordForDate,
 } from '@/db/repository'
-import { createEmptyDraft } from '@/features/records/record.utils'
+import { buildRecord, createEmptyDraft } from '@/features/records/record.utils'
 import { DEFAULT_CHILD_ID, SCHEMA_VERSION } from '@/lib/constants'
 import { STORES_V1 } from '@/db/schema'
 import Dexie from 'dexie'
@@ -124,6 +125,48 @@ describe('repository', () => {
     await database.children.update(first.id, { name: '小花' })
     const second = await ensureDefaultChild(database)
     expect(second.name).toBe('小花')
+  })
+})
+
+describe('CSV 匯入的合併語意', () => {
+  it('同日覆寫、其他日期保留，並沿用既有 id 與較早的 createdAt', async () => {
+    const existingDraft = createEmptyDraft(DEFAULT_CHILD_ID, '2026-09-01')
+    existingDraft.primaryCaregiver = 'mother'
+    const existing = await saveRecordForDate(existingDraft, database)
+
+    const untouchedDraft = createEmptyDraft(DEFAULT_CHILD_ID, '2026-09-02')
+    untouchedDraft.primaryCaregiver = 'father'
+    const untouched = await saveRecordForDate(untouchedDraft, database)
+
+    const incoming = [
+      {
+        ...buildRecord({
+          ...createEmptyDraft(DEFAULT_CHILD_ID, '2026-09-01'),
+          primaryCaregiver: 'grandmother',
+        }),
+        createdAt: '2030-01-01T00:00:00.000Z',
+      },
+      buildRecord({
+        ...createEmptyDraft(DEFAULT_CHILD_ID, '2026-09-03'),
+        primaryCaregiver: 'father',
+      }),
+    ]
+
+    const outcome = await importRecords(incoming, database)
+    expect(outcome).toEqual({ created: 1, updated: 1 })
+
+    const all = await listRecords(DEFAULT_CHILD_ID, database)
+    expect(all).toHaveLength(3)
+
+    const overwritten = await getRecordByDate(DEFAULT_CHILD_ID, '2026-09-01', database)
+    expect(overwritten?.primaryCaregiver).toBe('grandmother')
+    expect(overwritten?.id).toBe(existing?.id)
+    // 較早的 createdAt 勝出，匯入不會把原始建立時間往後改
+    expect(overwritten?.createdAt).toBe(existing?.createdAt)
+
+    const kept = await getRecordByDate(DEFAULT_CHILD_ID, '2026-09-02', database)
+    expect(kept?.id).toBe(untouched?.id)
+    expect(kept?.primaryCaregiver).toBe('father')
   })
 })
 

@@ -8,6 +8,7 @@ import type { Caregiver } from '@/types/common'
 interface CaregiverNotesFormProps {
   draft: CareRecordDraft
   involved: Caregiver[]
+  dayWord?: '今天' | '這天'
   onChange: (notes: Partial<Record<Caregiver, string>>) => void
 }
 
@@ -15,7 +16,12 @@ interface CaregiverNotesFormProps {
  * 每位今天有參與的照顧者各一格，任何一方都能被記錄，也都不是必填（SPEC §2.5）。
  * 需要記錄沒有出現在活動清單裡的人時，可以自行加一格。
  */
-export function CaregiverNotesForm({ draft, involved, onChange }: CaregiverNotesFormProps) {
+export function CaregiverNotesForm({
+  draft,
+  involved,
+  dayWord = '今天',
+  onChange,
+}: CaregiverNotesFormProps) {
   const [extra, setExtra] = useState<Caregiver[]>([])
   const [picking, setPicking] = useState(false)
 
@@ -47,7 +53,7 @@ export function CaregiverNotesForm({ draft, involved, onChange }: CaregiverNotes
         <Textarea
           key={caregiver}
           id={`caregiver-note-${caregiver}`}
-          label={`${CAREGIVER_LABELS[caregiver]}今天做了什麼？`}
+          label={`${CAREGIVER_LABELS[caregiver]}${dayWord}做了什麼？`}
           rows={2}
           value={draft.caregiverNotes[caregiver] ?? ''}
           onChange={(event) => setNote(caregiver, event.target.value)}

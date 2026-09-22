@@ -6,6 +6,7 @@ import { db } from '@/db/database'
 import { getRecordByDate } from '@/db/repository'
 import { DEFAULT_CHILD_ID } from '@/lib/constants'
 import { todayISO } from '@/lib/dates'
+import { addDays, format } from 'date-fns'
 
 async function resetDatabase() {
   await db.open()
@@ -76,6 +77,38 @@ describe('Today Page', () => {
         { activity: 'pickup', caregivers: ['mother', 'grandmother'] },
       ])
     })
+  })
+
+  it('可以切到前一天補記，紀錄會存到那一天而不是今天', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: '前一天' }))
+    expect(await screen.findByText('補記紀錄')).toBeInTheDocument()
+
+    await user.click(await screen.findByRole('button', { name: '外婆' }))
+    await user.click(await screen.findByRole('checkbox', { name: /接托/ }))
+    await user.click(screen.getByRole('button', { name: '儲存補記' }))
+    await screen.findByText('已儲存')
+
+    const yesterday = format(addDays(new Date(), -1), 'yyyy-MM-dd')
+    const stored = await getRecordByDate(DEFAULT_CHILD_ID, yesterday)
+    expect(stored?.primaryCaregiver).toBe('grandmother')
+    // 今天沒有被順手建立紀錄
+    expect(await getRecordByDate(DEFAULT_CHILD_ID, todayISO())).toBeUndefined()
+  })
+
+  it('不能選未來的日期', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    // 在今天時「後一天」是停用的
+    expect(await screen.findByRole('button', { name: '後一天' })).toBeDisabled()
+
+    // 回到前一天後才可以往後走，且日期輸入的上限就是今天
+    await user.click(screen.getByRole('button', { name: '前一天' }))
+    expect(screen.getByRole('button', { name: '後一天' })).toBeEnabled()
+    expect(screen.getByLabelText('選擇日期')).toHaveAttribute('max', todayISO())
   })
 
   it('完全空白的一天不會建立紀錄', async () => {

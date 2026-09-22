@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import App from '@/app/App'
 import { db } from '@/db/database'
 import { dumpAll } from '@/db/repository'
-import { buildCsv } from '@/features/export/csv'
-import { parseBackup, serializeBackup } from '@/features/export/json'
+import { DEFAULT_CHILD_ID } from '@/lib/constants'
+import { buildCsv, parseCsvRecords } from '@/features/export/csv'
 
 async function resetDatabase() {
   await db.open()
@@ -44,14 +44,16 @@ describe('爸爸照顧紀錄從輸入到匯出', () => {
     })
     expect(screen.getByText('照顧活動')).toBeInTheDocument()
 
-    // Export：JSON 與 CSV 都含這筆資料
+    // Export：CSV 含這筆資料，而且能原樣讀回來
     const data = await dumpAll()
-    const parsed = parseBackup(serializeBackup(data))
-    expect(parsed.ok).toBe(true)
-    if (parsed.ok) {
-      expect(parsed.data.records[0]?.caregiverNotes.father).toBe('陪玩積木一段時間，之後帶去洗澡')
+    const csv = buildCsv(data.records)
+    expect(csv).toContain('陪玩積木一段時間，之後帶去洗澡')
+
+    const reimported = parseCsvRecords(csv, DEFAULT_CHILD_ID)
+    expect(reimported.ok).toBe(true)
+    if (reimported.ok) {
+      expect(reimported.records[0]?.caregiverNotes.father).toBe('陪玩積木一段時間，之後帶去洗澡')
     }
-    expect(buildCsv(data.records)).toContain('陪玩積木一段時間，之後帶去洗澡')
   })
 
   it('刪除紀錄後回到歷史頁，列表不再顯示該筆', async () => {

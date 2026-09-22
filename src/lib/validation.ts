@@ -11,7 +11,7 @@ import { isValidISODate } from '@/lib/dates'
 import type { CareRecord } from '@/features/records/record.types'
 
 /**
- * 所有從 IndexedDB、JSON 匯入或表單進入 domain model 的資料
+ * 所有從 IndexedDB、CSV 匯入或表單進入 domain model 的資料
  * 都必須通過這裡的驗證（SPEC §21）。
  */
 
@@ -136,16 +136,3 @@ export const legacyCareRecordSchema = z
       schemaVersion: SCHEMA_VERSION,
     }
   })
-
-export const backupFileSchema = z.object({
-  app: z.literal('childcare-log'),
-  schemaVersion: z.number().int().min(1).max(SCHEMA_VERSION),
-  exportedAt: z.string().min(1),
-  children: z.array(childSchema),
-  records: z.array(legacyCareRecordSchema),
-  settings: z.array(settingEntrySchema).optional(),
-})
-
-export type BackupFile = z.infer<typeof backupFileSchema>
-
-export const IMPORT_ERROR_MESSAGE = '無法匯入此備份\n\n資料格式可能不完整或版本不相容。'
